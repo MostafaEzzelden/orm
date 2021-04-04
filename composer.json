@@ -1,0 +1,29 @@
+{
+    "name": "mostafaezz/orm",
+    "type": "library",
+    "description": "PHP ORM.",
+    "keywords": [
+        "php",
+        "orm"
+    ],
+    "license": "AS IS",
+    "authors": [{
+        "name": "Mostafa Ezz",
+        "email": "bullet.traitor@gmail.com",
+        "role": "Developer"
+    }],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=5.6"
+    },
+    "autoload": {
+        "files": [],
+        "psr-4": {
+            "Core\\": "src/",
+            "App\\": "app/"
+        }
+    },
+    "require-dev": {
+        "symfony/var-dumper": "^5.2"
+    }
+}
