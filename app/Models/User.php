@@ -18,7 +18,7 @@ class User extends Model
         'age'
     ];
 
-    protected $with = [];
+    protected $with = ['posts'];
 
     public function posts()
     {

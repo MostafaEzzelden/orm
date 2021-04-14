@@ -17,7 +17,7 @@ class Post extends Model
         'user_id',
         'body',
     ];
-
+    
     public function owner()
     {
         return $this->belongsTo(\App\Models\User::class, 'user_id');

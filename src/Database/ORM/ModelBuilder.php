@@ -4,43 +4,32 @@ namespace Core\Database\ORM;
 
 use Closure;
 use Core\Database\ORM\Model;
-use Core\Database\CommandBuilder as QueryBuilder;
+use Core\Database\Query\QueryBuilder;
 use Core\Database\ORM\Relations\Relation;
 
-class Builder
+class ModelBuilder
 {
     protected $query;
 
     protected $model;
 
-    /**
-     * The relationships that should be eager loaded.
-     *
-     * @var array
-     */
     protected $eagerLoad = array();
 
-    /**
-     * The methods that should be returned from query builder.
-     *
-     * @var array
-     */
-    protected $passthru = [
-        'toSql', 'insert', 'insertGetId',
-        'count', 'min', 'max', 'avg', 'sum',
-        'delete', 'update',
-    ];
+    protected $passthru = array(
+        'toSql', 'insert', 'insertGetId', 'pluck',
+        'count', 'min', 'max', 'avg', 'sum', 'exists',
+    );
 
-    public function __construct(QueryBuilder $query = null)
+    public function __construct(QueryBuilder $query)
     {
-        $this->query = $query ?: new QueryBuilder;
+        $this->query = $query;
     }
 
     public function setModel(Model $model): self
     {
         $this->model = $model;
 
-        $this->query->table($this->model->getTable());
+        $this->query->from($this->model->getTable());
 
         return $this;
     }
@@ -61,12 +50,6 @@ class Builder
         return $this;
     }
 
-    /**
-     * Parse a list of relations into individuals.
-     *
-     * @param  array  $relations
-     * @return array
-     */
     protected function parseRelations(array $relations)
     {
         $results = array();
@@ -87,13 +70,6 @@ class Builder
         return $results;
     }
 
-    /**
-     * Parse the nested relationships in a relation.
-     *
-     * @param  string  $name
-     * @param  array   $results
-     * @return array
-     */
     protected function parseNested($name, $results)
     {
         $progress = array();
@@ -218,14 +194,27 @@ class Builder
         return false;
     }
 
-    public function first(array $columns = ['*'])
+    public function first($columns = array('*'))
     {
-        return $this->limit(1)->get($columns)->first();
+        return $this->take(1)->get($columns)->first();
     }
 
-    public function find(int $id, array $columns = array('*'))
+    public function find($id, $columns = array('*'))
     {
-        return $this->where($this->model->getKeyName(), '=', $id)->first($columns);
+        if (is_array($id)) {
+            return $this->findMany($id, $columns);
+        }
+
+        $this->query->where($this->model->getKeyName(), '=', $id);
+
+        return $this->first($columns);
+    }
+
+    public function findMany($id, $columns = array('*'))
+    {
+        $this->query->whereIn($this->model->getKeyName(), $id);
+
+        return $this->get($columns);
     }
 
     /**

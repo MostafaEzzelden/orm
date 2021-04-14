@@ -3,14 +3,14 @@
 namespace Core\Database\ORM\Relations;
 
 use Core\Database\ORM\Model;
-use Core\Database\ORM\Builder;
+use Core\Database\ORM\ModelBuilder;
 use Core\Database\ORM\Collection;
 
 class HasMany extends Relation
 {
     private $foreignKey;
 
-    public function __construct(Builder $query, Model $parent, $foreignKey)
+    public function __construct(ModelBuilder $query, Model $parent, $foreignKey)
     {
         $this->foreignKey = $foreignKey;
 

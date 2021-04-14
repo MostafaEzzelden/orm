@@ -2,66 +2,36 @@
 
 namespace Core\Database\ORM;
 
-use Exception;
 use ArrayAccess;
-use Core\Database\ORM\Builder;
-use Core\Database\ORM\ArrayableInterface;
 use Core\Database\ORM\Collection;
+use Core\Database\ORM\ModelBuilder;
+use Core\Database\ConnectionManager;
+use Core\Database\Query\QueryBuilder;
 use Core\Database\ORM\Relations\HasOne;
 use Core\Database\ORM\Relations\HasMany;
+use Core\Database\ORM\ArrayableInterface;
 use Core\Database\ORM\Relations\BelongsTo;
 
 abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterface
 {
-    /**
-     * The model attribute's original state.
-     *
-     * @var array
-     */
+    protected $connection;
+
+    protected static $connectionManager;
+
     protected $original = [];
 
-    /**
-     * the db table name
-     *
-     * @var string
-     */
     protected $table = '';
 
-    /**
-     * The with relations
-     *
-     * @var array
-     */
     protected $with = [];
 
-    /**
-     * the primary key for table
-     *
-     * @var string
-     */
     protected $primaryKey = 'id';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [];
 
-    /**
-     * The attributes.
-     *
-     * @var array
-     */
     protected $attributes = [];
 
     protected $relations = [];
 
-    /**
-     * Indicates if the model exists.
-     *
-     * @var bool
-     */
     public $exists = false;
 
     protected $visible = [];
@@ -85,14 +55,52 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
         $this->fill($attributes);
     }
 
-    /**
-     * The "booting" method of the model.
-     *
-     * @return void
-     */
     protected static function boot()
     {
         //
+    }
+
+    public static function setConnectionManager(ConnectionManager $manager)
+    {
+        static::$connectionManager = $manager;
+    }
+
+    public static function getConnectionManager()
+    {
+        return static::$connectionManager;
+    }
+
+    public static function resolveConnection($connection = null)
+    {
+        return static::$connectionManager->connection($connection);
+    }
+
+    public function getConnection()
+    {
+        return static::resolveConnection($this->connection);
+    }
+
+    protected function newBaseQueryBuilder()
+    {
+        $connection = $this->getConnection();
+
+        $grammar = $connection->getQueryGrammar();
+
+        return new QueryBuilder($connection, $grammar);
+    }
+
+    public function newQuery()
+    {
+        $builder = new ModelBuilder($this->newBaseQueryBuilder());
+
+        $builder->setModel($this)->with($this->with);
+
+        return $builder;
+    }
+
+    protected function getDateFormat()
+    {
+        return $this->getConnection()->getQueryGrammar()->getDateFormat();
     }
 
     public function syncOriginal()
@@ -102,11 +110,6 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
         return $this;
     }
 
-    /**
-     * get table
-     *
-     * @return string
-     */
     public function getTable(): string
     {
         return $this->table;
@@ -184,15 +187,6 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
         $instance = new static;
 
         return $instance->newQuery()->with($relations);
-    }
-
-    public function newQuery()
-    {
-        $builder = new Builder();
-
-        $builder->setModel($this)->with($this->with);
-
-        return $builder;
     }
 
     public function setRelation(string $relation_name, $data): self
@@ -306,7 +300,7 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
         $this->syncOriginal();
     }
 
-    protected function setKeysForSaveQuery(Builder $query)
+    protected function setKeysForSaveQuery(ModelBuilder $query)
     {
         $query->where($this->getKeyName(), '=', $this->getKeyForSaveQuery());
 
@@ -354,7 +348,7 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
      *
      * @return bool
      */
-    protected function performUpdate(Builder $query)
+    protected function performUpdate(ModelBuilder $query)
     {
         $dirty = $this->getDirty();
 
@@ -365,7 +359,7 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
         return true;
     }
 
-    protected function performInsert(Builder $query)
+    protected function performInsert(ModelBuilder $query)
     {
         $attributes = $this->attributes;
 
@@ -386,7 +380,7 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
      * @param  array  $attributes
      * @return void
      */
-    protected function insertAndSetId(Builder $query, $attributes)
+    protected function insertAndSetId(ModelBuilder $query, $attributes)
     {
         $id = $query->insertGetId($attributes, $keyName = $this->getKeyName());
 
@@ -635,8 +629,8 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
     /**
      * Handle dynamic method calls into the method.
      *
-     * @param  string  $method
-     * @param  array   $parameters
+     * @param  string $method
+     * @param  array $parameters
      * @return mixed
      */
     public function __call($method, $parameters)
@@ -647,17 +641,15 @@ abstract class Model implements ArrayAccess, ArrayableInterface, JsonableInterfa
     }
 
     /**
-     * Undocumented function
+     * Handle dynamic static method calls into the method.
      *
      * @param string $method_name
      * @param array $arguments
-     * @return void
+     * @return mixed
      */
-    static public function __callStatic(string $method, array $parameters)
+    public static function __callStatic(string $method, array $parameters)
     {
-        $instance = new static;
-
-        return call_user_func_array(array($instance, $method), $parameters);
+        return call_user_func_array(array(new static, $method), $parameters);
     }
 
     /**

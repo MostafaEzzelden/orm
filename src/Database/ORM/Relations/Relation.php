@@ -4,7 +4,7 @@ namespace Core\Database\ORM\Relations;
 
 use Closure;
 use Core\Database\ORM\Model;
-use Core\Database\ORM\Builder;
+use Core\Database\ORM\ModelBuilder;
 use Core\Database\ORM\Collection;
 
 abstract class Relation
@@ -17,7 +17,7 @@ abstract class Relation
 
     protected static $constraints = true;
 
-    public function __construct(Builder $query, Model $parent)
+    public function __construct(ModelBuilder $query, Model $parent)
     {
         $this->query = $query;
         $this->parent = $parent;
